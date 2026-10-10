@@ -1,0 +1,8 @@
+{"arm": "control", "repo": "nodeblog", "task": "test", "run": 1, "success": true, "steps": 3, "failed_steps": 0, "prompt_tokens": 1196, "completion_tokens": 293, "wall_s": 36.0, "done": true}
+{"arm": "control", "repo": "nodeblog", "task": "fix", "run": 1, "success": true, "steps": 5, "failed_steps": 1, "prompt_tokens": 6611, "completion_tokens": 903, "wall_s": 103.2, "done": true}
+{"arm": "control", "repo": "nodeblog", "task": "test", "run": 2, "success": true, "steps": 3, "failed_steps": 0, "prompt_tokens": 1208, "completion_tokens": 186, "wall_s": 29.5, "done": true}
+{"arm": "control", "repo": "nodeblog", "task": "fix", "run": 2, "success": true, "steps": 5, "failed_steps": 1, "prompt_tokens": 4005, "completion_tokens": 622, "wall_s": 69.8, "done": true}
+{"arm": "experimental", "repo": "nodeblog", "task": "test", "run": 1, "success": true, "steps": 2, "failed_steps": 0, "prompt_tokens": 1487, "completion_tokens": 443, "wall_s": 40.3, "done": true}
+{"arm": "experimental", "repo": "nodeblog", "task": "fix", "run": 1, "success": true, "steps": 8, "failed_steps": 2, "prompt_tokens": 11893, "completion_tokens": 1657, "wall_s": 174.7, "done": true}
+{"arm": "experimental", "repo": "nodeblog", "task": "test", "run": 2, "success": true, "steps": 2, "failed_steps": 0, "prompt_tokens": 1338, "completion_tokens": 602, "wall_s": 58.1, "done": true}
+{"arm": "experimental", "repo": "nodeblog", "task": "fix", "run": 2, "success": true, "steps": 8, "failed_steps": 2, "prompt_tokens": 12042, "completion_tokens": 1307, "wall_s": 169.4, "done": true}
