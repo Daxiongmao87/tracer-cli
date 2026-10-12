@@ -1,105 +1,87 @@
 # Tracer
 
-Tracer is an experiment in **learned affordances** for terminal agents: an
-agent that starts with only `bash(intent, command)` and gradually manufactures
-its own useful action space from experience — an online learned affordance
-cache, not a tool registry.
+Tracer is an **interactive terminal AI agent CLI** with learned procedural memory.
 
-## Status: phase 1 complete (2026-10-10)
+Like other terminal coding/agent tools, Tracer is intended to run inside a real working directory, accept open-ended conversational tasks, reason through them, execute shell actions, observe the results, and continue interactively. Its distinguishing idea is that it does not rely only on a fixed tool catalog: Tracer learns useful **affordances** from its own successful actions and retrieves them when similar intentions arise later.
 
-The phase-1 harness (`harness.py`) pits two arms against each other on
-identical tasks. Both arms require a short intent before every bash call, so
-the *only* difference between them is memory:
+The conceptual primitive is deliberately small:
 
-- **Control:** bash + a short intent required each step; no store, no retrieval.
-- **Experimental:** bash + the same intent requirement + every successful
-  action stored as
-  `{intent, command, cwd_context, environment, result_summary, success}`
-  + top-5 similar past successes retrieved before each invocation and
-  presented as temporary affordances (use / modify / ignore).
+```text
+bash(intent, command)
+```
 
-Deliberately minimal: no taxonomy, clustering, templates, AST normalization,
-or quality scoring. Retrieval is TF-IDF cosine over intent+environment text
-(0.7 intent / 0.3 environment).
+Bash remains the universal fallback. Learned affordances make familiar work easier to rediscover; they do not prevent novel shell actions.
 
-**Result (48/48 cells):** experimental 22/24 tasks vs control 20/24, 3.8 vs
-4.6 average bash steps, 0.7 vs higher failed-step rate — at ~9% more tokens
-and no wall-time win. Transfer improves on same/similar projects; no
-retrieval pollution on the unrelated project. Full report:
-[`runs/RESULTS-phase1.md`](runs/RESULTS-phase1.md).
+## Core idea
 
-## Design details
+Tracer records episodes containing the agent's intent, the concrete action it took, relevant environment/workspace context, and the resulting outcome. At the next action boundary, the intended flow is:
 
-- **Fixtures:** three small repos — `pycalc` (Python/pytest, same-project
-  transfer), `pytask` (Python/pytest, similar-project transfer), `nodeblog`
-  (Node, unrelated-project transfer / pollution check).
-- **Task families** (repeated per repo): `inspect` (report local changes),
-  `search` (find all references to a symbol), `test` (run the suite, report
-  pass/fail), `fix` (a bug is planted; find it, fix it, suite must pass).
-- **Oracles are deterministic:** fixture reset via `git checkout -- . &&
-  git clean -fdq` before each run; success is checked by re-running
-  git/rg/the suite directly, never by trusting the agent's word.
-- **Metrics per run:** task success, bash calls, failed bash calls,
-  prompt/completion tokens, wall-clock seconds, done-flag, error.
-- **Security gating:** a blocklist (destructive ops, credential-shaped
-  literals) is applied at store time and retrieval time. Retrieval is never
-  permission to execute — commands run in a fixture-scoped working
-  directory (not a true sandbox).
+```text
+observe
+  ↓
+deliberate about the next goal
+  ↓
+express next-step intent
+  ↓
+retrieve relevant prior successful actions
+  ↓
+use / adapt / ignore them
+  ↓
+execute Bash
+  ↓
+observe + remember
+```
 
-## Running it
+Over time, repeated experience can support better retrieval, structural command normalization, lazily derived templates/prototypes, quality weighting, and eventually reusable higher-order actions. These abstractions should emerge from evidence rather than from a hand-maintained command taxonomy.
+
+## Current status
+
+The repository currently contains a **Phase-1 proof-of-concept/evaluation harness**, not yet the complete intended interactive product.
+
+Phase 1 tested the smallest useful version of the memory idea: successful `(intent, command)` episodes were stored and the top five similar past actions were retrieved before subsequent steps. In the controlled run, the memory arm completed 22/24 tasks versus 20/24 for control and used fewer average Bash steps (3.8 vs 4.6), at roughly 9% more tokens and without a wall-time win. See [`runs/RESULTS-phase1.md`](runs/RESULTS-phase1.md).
+
+Those results justify continuing the mechanism. They do **not** define Tracer as an eval harness.
+
+The present files reflect that prototype history:
+
+- `harness.py` — Phase-1 controlled experiment driver; currently mixes agent loop, memory, retrieval, fixture tasks, and oracles.
+- `tui.py` — current eval-results TUI; useful scaffolding, but not the target interactive agent interface.
+- `fixtures/` — small repositories used for controlled evaluation.
+- `runs/` — Phase-1 result artifacts and learned stores.
+- `.agents/` — product vision, target architecture, implementation roadmap, eval protocol, conventions, and security guidance.
+
+## Product direction
+
+The next engineering priority is to extract the reusable runtime from the experiment and build the actual interactive Tracer CLI:
+
+1. separate model/provider, agent loop, Bash execution, environment context, memory, retrieval, and safety components;
+2. build an ongoing conversational terminal session over arbitrary working directories;
+3. place passive retrieval between next-step intent formation and concrete action execution;
+4. persist workspace-aware episodic memory across normal sessions;
+5. make the existing controlled eval harness consume the same product runtime rather than defining it;
+6. then improve retrieval with embeddings, structural normalization, quality weighting, lazy templates/prototypes, and forgetting/decay, measuring each change against the baseline.
+
+See [`.agents/VISION.md`](.agents/VISION.md), [`.agents/ARCHITECTURE.md`](.agents/ARCHITECTURE.md), and [`.agents/ROADMAP.md`](.agents/ROADMAP.md).
+
+## Design principles
+
+- **Interactive agent first.** Benchmarking exists to validate the product, not to become the product.
+- **Bash stays open-world.** A missing learned affordance must never make an action impossible.
+- **Intent is semantic state.** It provides the retrieval key for what the agent is trying to accomplish next.
+- **Experience is ground truth.** Raw observed episodes remain primary; abstractions are derivative caches.
+- **No curated command ontology.** Useful action structure should be induced from experience wherever practical.
+- **Retrieval is advisory.** A retrieved command is not permission to execute it and can always be ignored.
+- **Measure memory honestly.** Success, action count, failures, token cost, latency, transfer, and retrieval pollution all matter.
+
+## Running the existing Phase-1 eval
+
+The current repository can still reproduce the proof-of-concept experiment:
 
 ```bash
-# one-time: make fixtures git repos so the harness can reset them
 bash fixtures/setup.sh
-
 python3 harness.py --arms both --runs 2 --model <your-model>
 ```
 
-`harness.py` currently calls the model through `atelier.astralkeep.com`
-(see `atelier_chat`); point it at your own endpoint to run elsewhere.
-Results land in `runs/run-<ts>.jsonl`; experience stores in
-`runs/store-<arm>-<ts>.jsonl`.
+`harness.py` currently calls the model through `atelier.astralkeep.com`; provider access is expected to become replaceable as the product runtime is extracted.
 
-## Frontend (TUI)
-
-`tui.py` is a stdlib curses front end over the harness result contract. It
-never imports the harness — it spawns it (run mode) and renders the JSONL it
-writes, or watches an existing results file (watch mode):
-
-```bash
-# watch a results file: live matrix + summary
-python3 tui.py --file runs/run-<ts>.jsonl
-
-# drive a run live (spawns harness.py; polls its --out file)
-python3 tui.py --runs 2 --arms both --model <your-model>
-
-# headless summary (no curses; good for scripts)
-python3 tui.py --file runs/run-<ts>.jsonl --print
-```
-
-Matrix rows are one `(arm, run, repo, task)` cell: each shows control then
-experimental `O`(success) / `X`(fail) with the step count. Keys: `t` toggle
-summary, `←`/`→` change run, `r` re-run (run mode), `p` pause/resume, `q`
-quit. The summary panel shows per-arm totals, the transfer ladder, and
-success per task.
-
-## What's next
-
-Phase 2 candidates (only because phase 1 showed the basic effect):
-
-1. raw episodic retrieval vs + shell AST normalization
-2. + lazily synthesized templates (derivative cache entries, not ground truth)
-3. quality-weighted ranking (exec time, corrective steps after, retries)
-
-See [`.agents/ROADMAP.md`](.agents/ROADMAP.md) and
-[`.agents/VISION.md`](.agents/VISION.md) for the longer arc.
-
-## Layout
-
-- `harness.py` — agent loop, store, retrieval, oracles, metrics
-- `tui.py` — curses front end over the harness result contract (run/watch/print)
-- `fixtures/` — the three fixture repos + `setup.sh` to git-init them
-- `runs/` — curated artifacts: `RESULTS-phase1.md`, the primary run log,
-  the learned experimental store, and the nodeblog re-run log
-- `.agents/` — operating docs for AI agents working in this repo
-  (vision, architecture, eval protocol, conventions, roadmap, security)
+The eval is retained because it provides a controlled regression test for the learned-affordance mechanism while Tracer evolves into the interactive CLI described above.
