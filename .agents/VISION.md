@@ -40,10 +40,28 @@ repeat
 
 This is an online learned affordance cache: experience changes the texture of the future action space without closing the world around a static registry.
 
+## Durable interactive work
+
+Tracer is meant for work that can outlive a single context window or a single CLI process. Session continuity is therefore part of the product, not incidental UX.
+
+A session should be persistable, discoverable, and resumable after exit. Resuming should restore enough state for the agent and user to continue naturally: workspace association, task progress, user constraints, important decisions, relevant recent history, discovered facts, changed-file state, and unresolved work.
+
+Long sessions must also survive context pressure. Instead of simply dropping old messages, Tracer should compact older conversational and tool history into a durable semantic/session representation while retaining recent turns verbatim. The purpose of compaction is continuity, not merely token reduction.
+
+Three forms of retained state must remain conceptually distinct:
+
+- **conversation/session context** — compacted to let one long-running interaction continue;
+- **workspace/task state** — what is currently true, what changed, and what remains to do;
+- **learned affordance memory** — reusable evidence connecting intent, environment, action, and outcome across work.
+
+Compaction must not silently turn conversation summaries into procedural affordances, and affordance retrieval must not substitute for reconstructing the state of a resumed session.
+
 ## Why this matters
 
 - **Open-world capability.** A cache miss never prevents action because Bash remains available.
 - **Procedural memory.** Discoveries about a repository, toolchain, or workflow do not have to be rediscovered every session.
+- **Continuity.** Users can leave and resume real work without restarting the conversation from scratch.
+- **Long-horizon operation.** Compaction lets sessions continue beyond a single raw model context without blind truncation.
 - **Small active action space.** The model sees a few contextually relevant affordances rather than a huge global catalog.
 - **Emergent specialization.** The same Tracer binary can develop different useful habits in different projects and environments.
 - **Potential efficiency gains.** Familiar operations can become recognition/reuse problems instead of repeated reasoning/exploration problems.
@@ -68,9 +86,12 @@ Those abstractions are caches over experience, not a replacement for it. They sh
 - **Not a prompt library.** Stored actions are evidence of prior behavior and outcomes.
 - **Not a closed action system.** Raw Bash remains the escape hatch for novel work.
 - **Not memory without an agent.** The memory layer is Tracer's differentiator, but the product is the complete interactive agent CLI around it.
+- **Not ephemeral chat.** A useful Tracer session must be resumable and able to survive context-window pressure through compaction.
 
 ## Evaluation
 
 Evaluation remains important because the learned-memory mechanism can easily become self-reinforcing noise. Controlled tests should measure task success, steps, failed actions, tokens, wall time, transfer, and retrieval pollution. Those tests answer whether a change improves Tracer; they do not define what Tracer is.
+
+Interactive-runtime evaluation should additionally cover session continuity: verify that a session can be persisted, resumed after process restart, compacted under context pressure, and continued without losing material user constraints, workspace facts, decisions, changed-file awareness, or unresolved work.
 
 Phase 1 established a useful first signal using raw episodic retrieval. Future evaluations should continue to compare memory strategies honestly while product development moves toward the interactive CLI.
