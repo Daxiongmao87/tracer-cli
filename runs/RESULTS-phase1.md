@@ -56,8 +56,11 @@ is confirmed as genuine problem-solving, not noise.
 
 - Retrieval: TF-IDF cosine over intent+environment text (0.7/0.3); lexical
   stand-in for embeddings (no embeddings endpoint on atelier).
-- Store: 78 experiences accumulated by the experimental arm.
+- Store: 94 experiences accumulated by the experimental arm (33 distinct
+  commands; the append-only episodic store repeats commands across steps/runs).
 - Harness bugs fixed during validation: stdin pipe hangs (rg reading inherited
   stdin), pipeline grandchildren outliving the shell (process groups + killpg).
+- Done-without-success (agent declared done, oracle failed; EVAL.md counts
+  these separately): control 4, experimental 2 — all the `search` task.
 - VM was replaced mid-run (46/48); resumed the last 2 cells from the
   surviving store file.

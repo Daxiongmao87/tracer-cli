@@ -7,8 +7,11 @@ input to the shell. Everything below exists because of that sentence.
 
 ## Current mitigations
 
-1. **Sandboxed cwd.** Commands run only inside the fixture repo for the
-   current task. Never point the harness at a non-fixture directory.
+1. **Fixture-scoped cwd.** Commands start in the fixture repo for the
+   current task. This is a working directory, **not a sandbox** — a shell
+   command can still reach absolute paths, `~`, or `../`. The blocklist and
+   human supervision bound the blast radius, not the cwd. Never point the
+   harness at a non-fixture directory.
 2. **Blocklist, twice.** `BLOCKLIST` patterns (destructive ops like
    `rm -rf /`, `mkfs`, `dd … of=/dev`, fork bombs, `curl|sh` pipes,
    credential-shaped literals, `.ssh/` / `.aws/` paths) are enforced at

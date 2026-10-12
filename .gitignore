@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+# TUI run-mode scratch output (ephemeral; curated artifacts stay in runs/)
+runs/run-tui-*

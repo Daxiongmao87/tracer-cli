@@ -26,8 +26,9 @@ messages (system + task prompt always retained).
 
 The two arms are identical except:
 
-- **Control:** no intent requirement, no store, no retrieval.
-- **Experimental:** the model must state an intent each step; every
+- **Control:** no store, no retrieval (the model still states an intent
+  each step — that requirement is shared, it is not the treatment).
+- **Experimental:** the model states an intent each step, and every
   successful, non-blocklisted command is appended to the store; before each
   step (once the store is non-empty) the top-5 similar past successes are
   injected as "relevant previous successful actions (you may use, modify,

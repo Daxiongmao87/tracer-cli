@@ -31,7 +31,6 @@ ALLOWED = ("atelier.astralkeep.com",)
 CRED = "custom.atelier"
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIX = os.path.join(HERE, "fixtures")
-VENV_PY = os.path.expanduser("~/workspace/.venv/afcache/bin/python")
 
 MAX_STEPS = 15
 CMD_TIMEOUT = 120
@@ -117,7 +116,10 @@ def retrieve(store, intent_query, env_query, k=5):
         se = _cos(qv_e, _vec(r["environment_text"], idf_e))
         scored.append((0.7 * si + 0.3 * se, r))
     scored.sort(key=lambda x: -x[0])
-    return [(s, r) for s, r in scored[:k] if s > 0]
+    # Blocklist is enforced here too (SECURITY.md: "twice"). It only grows, so
+    # an entry stored under an older list can match a later pattern; filtering
+    # at retrieval keeps a stored action from ever being suggested.
+    return [(s, r) for s, r in scored[:k] if s > 0 and not blocked(r["command"])]
 
 # ---------------------------------------------------------------- fixtures
 

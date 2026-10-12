@@ -8,11 +8,12 @@ cache, not a tool registry.
 ## Status: phase 1 complete (2026-10-10)
 
 The phase-1 harness (`harness.py`) pits two arms against each other on
-identical tasks:
+identical tasks. Both arms require a short intent before every bash call, so
+the *only* difference between them is memory:
 
-- **Control:** bash only. No intent requirement, no memory.
-- **Experimental:** bash + a short intent required each step + every
-  successful action stored as
+- **Control:** bash + a short intent required each step; no store, no retrieval.
+- **Experimental:** bash + the same intent requirement + every successful
+  action stored as
   `{intent, command, cwd_context, environment, result_summary, success}`
   + top-5 similar past successes retrieved before each invocation and
   presented as temporary affordances (use / modify / ignore).
@@ -42,8 +43,8 @@ retrieval pollution on the unrelated project. Full report:
   prompt/completion tokens, wall-clock seconds, done-flag, error.
 - **Security gating:** a blocklist (destructive ops, credential-shaped
   literals) is applied at store time and retrieval time. Retrieval is never
-  permission to execute — and all commands run in the sandboxed fixture
-  repos anyway.
+  permission to execute — commands run in a fixture-scoped working
+  directory (not a true sandbox).
 
 ## Running it
 
@@ -59,6 +60,29 @@ python3 harness.py --arms both --runs 2 --model <your-model>
 Results land in `runs/run-<ts>.jsonl`; experience stores in
 `runs/store-<arm>-<ts>.jsonl`.
 
+## Frontend (TUI)
+
+`tui.py` is a stdlib curses front end over the harness result contract. It
+never imports the harness — it spawns it (run mode) and renders the JSONL it
+writes, or watches an existing results file (watch mode):
+
+```bash
+# watch a results file: live matrix + summary
+python3 tui.py --file runs/run-<ts>.jsonl
+
+# drive a run live (spawns harness.py; polls its --out file)
+python3 tui.py --runs 2 --arms both --model <your-model>
+
+# headless summary (no curses; good for scripts)
+python3 tui.py --file runs/run-<ts>.jsonl --print
+```
+
+Matrix rows are one `(arm, run, repo, task)` cell: each shows control then
+experimental `O`(success) / `X`(fail) with the step count. Keys: `t` toggle
+summary, `←`/`→` change run, `r` re-run (run mode), `p` pause/resume, `q`
+quit. The summary panel shows per-arm totals, the transfer ladder, and
+success per task.
+
 ## What's next
 
 Phase 2 candidates (only because phase 1 showed the basic effect):
@@ -73,6 +97,7 @@ See [`.agents/ROADMAP.md`](.agents/ROADMAP.md) and
 ## Layout
 
 - `harness.py` — agent loop, store, retrieval, oracles, metrics
+- `tui.py` — curses front end over the harness result contract (run/watch/print)
 - `fixtures/` — the three fixture repos + `setup.sh` to git-init them
 - `runs/` — curated artifacts: `RESULTS-phase1.md`, the primary run log,
   the learned experimental store, and the nodeblog re-run log
