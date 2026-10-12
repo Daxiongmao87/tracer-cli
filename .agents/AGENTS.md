@@ -2,62 +2,48 @@
 
 ## What this repo is
 
-Tracer studies whether a terminal agent gets better at acting by remembering
-what worked. Phase 1 is done and showed the basic effect (see
-`runs/RESULTS-phase1.md`): an agent that stores successful actions and
-retrieves the top-5 similar ones before each step succeeds more often with
-fewer steps than a bash-only baseline. Everything here serves that
-investigation. If a change doesn't serve the investigation, it doesn't belong.
+Tracer is an **interactive terminal AI agent CLI**. Its product category is similar to OpenCode and other terminal coding/agent tools: a user opens Tracer in a real working directory, gives it an open-ended task, and interacts with an agent that reasons, acts through the shell, observes results, and continues until the task is complete.
 
-## Before you touch experiment design
+Tracer's differentiator is **learned affordances**. The runtime starts from a deliberately small primitive action space centered on `bash(intent, command)`. Successful actions are remembered with their intent, environment, command, and outcome. Between deliberation and execution, the harness passively retrieves relevant prior actions and presents them as temporary affordances. The model may use, adapt, or ignore them; raw Bash always remains available.
+
+The repo currently contains a Phase-1 evaluation harness that validated a minimal version of this idea. That harness is supporting evidence and test infrastructure. **It is not Tracer's product definition, target UX, or target architecture.** Do not turn Tracer into an eval runner.
+
+## Product invariants
+
+1. **Interactive agent CLI first.** The primary user experience is an ongoing terminal conversation/session over arbitrary real work, not a benchmark matrix.
+2. **Bash is the universal fallback.** Tracer must remain able to perform novel actions even when nothing useful is retrieved from memory.
+3. **Intent precedes retrieval.** The desired loop is: observe → deliberate/express next intent → retrieve relevant affordances → choose/adapt/fallback → execute → observe → remember.
+4. **Memory is passive assistance, not authority.** Retrieval is never permission to execute and never removes the model's ability to choose another action.
+5. **No curated taxonomy.** Do not introduce a hand-maintained `git.*`, `python.*`, `filesystem.*`, or similar ontology as the core design. Reusable actions should emerge from episodes, structural normalization, clustering/generalization, and measured reuse.
+6. **Ground truth is experience.** Durable records are observed intent/action/environment/outcome episodes. Templates, prototypes, clusters, and higher-order affordances are derivative cache artifacts and may be regenerated or revised.
+7. **Evaluation supports the product.** Control arms, fixtures, deterministic oracles, and transfer tests exist to measure whether changes improve Tracer. Product architecture must not be distorted to make the benchmark convenient.
+
+## Read before changing architecture
 
 Read, in this order:
 
-1. [VISION.md](VISION.md) — what tracer is for and what it is not
-2. [ARCHITECTURE.md](ARCHITECTURE.md) — how the harness actually works
-3. [EVAL.md](EVAL.md) — the eval protocol; what counts as signal
-4. [SECURITY.md](SECURITY.md) — non-negotiable safety rules
-5. [ROADMAP.md](ROADMAP.md) — what's planned vs what's merely an idea
+1. [VISION.md](VISION.md) — product purpose and principles
+2. [ARCHITECTURE.md](ARCHITECTURE.md) — target runtime architecture and current gap
+3. [ROADMAP.md](ROADMAP.md) — product-first implementation order
+4. [SECURITY.md](SECURITY.md) — non-negotiable shell safety boundaries
+5. [EVAL.md](EVAL.md) — supporting evaluation protocol
 
-## Running the experiment
+## Current repository state
 
-```bash
-bash fixtures/setup.sh          # one-time: git-init the fixtures
-python3 harness.py --arms both --runs 2 --model <model>
-```
+The current implementation is a proof of concept:
 
-`harness.py` calls the model via `atelier_chat()` (currently wired to
-`atelier.astralkeep.com`). To run elsewhere, replace that one function with
-your endpoint — the agent loop, store, and oracles don't care where
-completions come from. Keep `max_tokens >= 1024` for reasoning models; short
-budgets return empty content and silently poison results.
+- `harness.py` runs controlled tasks across fixture repositories and compares memory vs no-memory arms.
+- `tui.py` currently visualizes that eval harness.
+- `fixtures/` and `runs/` are eval assets.
+- Phase 1 showed a modest measurable benefit from episodic retrieval.
 
-## Repo discipline
+Do not mistake those current files for the desired end state. The next engineering work should extract/generalize the useful agent loop and memory mechanisms into the interactive CLI rather than adding more product surface to the benchmark runner.
 
-- **Fixtures stay pristine.** The harness mutates them and resets via git.
-  Never hand-edit fixture sources to "fix" a task; the planted bugs and
-  mutations are the test. If a fixture's baseline is wrong, say so and fix
-  the baseline in a separate commit, then re-run.
-- **`runs/` is curated, not a log dump.** Commit `RESULTS-*.md` summaries,
-  the primary run log, and the learned store for a completed phase. Scratch
-  runs, 0-byte stores, and superseded logs stay local.
-- **Store schema is append-only.** Never rewrite history in a committed
-  `store-*.jsonl`; if the schema changes, bump the phase and start a new
-  store.
-- **No new dependencies without a reason.** The harness is stdlib-only
-  Python plus `rg`, `pytest`, `node`. Keep it that way unless the experiment
-  demands otherwise.
-- **The blocklist only grows.** See SECURITY.md. Weakening it is a
-  security-relevant change: document why, in the commit.
+## Working rules
 
-## Making changes
-
-- Answer the narrow question asked; don't rebuild the harness around it.
-- Phase-1's minimalism is load-bearing: no taxonomy, no clustering, no
-  templates, no AST normalization in the phase-1 code path. Phase-2 ideas
-  go behind a flag or in a new module, never by complicating the baseline.
-- Control and experimental arms must stay identical except for the
-  treatment. If you touch the agent loop, check both arms still differ only
-  in the intended way.
-- Verify against the artifact: after a run, read the actual `runs/*.jsonl`
-  before claiming results. Never summarize a run you haven't opened.
+- Preserve Phase-1 results and reproducibility; move or isolate eval code rather than destroying evidence.
+- Product runtime code must not depend on fixture repositories, hard-coded task families, control/experimental arms, or deterministic eval oracles.
+- Keep model/provider access replaceable. Atelier is one endpoint, not Tracer's conceptual boundary.
+- Keep retrieval and memory interfaces separable from the model loop so alternative embedding/retrieval strategies can be tested without rewriting the CLI.
+- Make changes incrementally and verify the user-facing CLI path as well as automated tests/evals.
+- Do not claim the current implementation already satisfies this architecture when it does not.
