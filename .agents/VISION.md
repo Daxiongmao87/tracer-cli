@@ -1,51 +1,76 @@
-# VISION.md — what tracer is for
+# VISION.md — what Tracer is for
+
+## Product
+
+Tracer is an **interactive terminal AI agent CLI**: a user launches it in a working directory, gives it open-ended tasks, and collaborates with an agent that reasons, acts through the shell, observes results, and continues interactively. Its broad product category is similar to OpenCode; its distinguishing idea is that its useful action space is learned from experience instead of being fixed entirely by a tool registry designed in advance.
+
+Tracer begins from a deliberately small primitive capability centered on:
+
+```text
+bash(intent, command)
+```
+
+The explicit intent is not decorative metadata. It is the semantic handle used to associate what the agent is trying to accomplish with what actually worked.
 
 ## The bet
 
-Tool-using agents today start every session with the same fixed action
-space: a registry of tools someone else designed. Humans don't work that
-way — we accumulate *affordances* from experience: "last time the tests
-were red in this repo, `git status` then `pytest -q` told me where to
-look." Tracer is infrastructure for that: an agent that manufactures its
-own useful action space online, from its own successful actions.
+Tool-using agents normally begin every session with a fixed action space authored by somebody else. Tracer tests and productizes a different approach: retain successful intent/action/environment/outcome episodes and use them to make relevant prior behavior available at the moment the agent is deciding what to do next.
 
-Phase 1 tested the smallest possible version of the bet: store successful
-`(intent, command)` pairs, retrieve the top-5 most similar before each
-step, present them as disposable affordances (use / modify / ignore). It
-worked — modestly, measurably: higher success, fewer steps, no pollution on
-unrelated tasks. The bet survives first contact with data.
+The target interaction loop is:
 
-## Where it goes
+```text
+user goal / latest observation
+        ↓
+deliberate: what should I accomplish next?
+        ↓
+express next intent
+        ↓
+passive retrieval of relevant learned affordances
+        ↓
+choose one / adapt one / ignore all and use raw Bash
+        ↓
+execute
+        ↓
+observe
+        ↓
+record experience
+        ↓
+repeat
+```
 
-1. **Better memory** (phase 2): shell-AST normalization so `pytest -q`
-   and `python -m pytest -q` are recognized as the same action; lazily
-   synthesized templates so the cache stores *patterns*, not just
-   episodes; quality weighting so fast, decisive actions outrank slow,
-   flailing ones.
-2. **Honest memory**: decay and forgetting. A cache that only grows
-   becomes a junk drawer. Retrieval pollution is the failure mode to
-   watch — phase 1's unrelated-project transfer test exists to catch it
-   early, and it must survive every phase.
-3. **Portable memory**: a tracer sidecar any agent loop can query —
-   "given my intent and environment, what worked last time?" — without
-   buying into a framework.
+This is an online learned affordance cache: experience changes the texture of the future action space without closing the world around a static registry.
 
-## What tracer is not
+## Why this matters
 
-- **Not a tool registry.** Registries are designed top-down; affordances
-  are learned bottom-up. Tracer never ships a curated skill list.
-- **Not a prompt library.** Stored actions are evidence of what worked,
-  not advice about what should work. The agent may ignore every
-  retrieved affordance.
-- **Not a planner.** Tracer doesn't decide what to do; it changes the
-  texture of the action space the decider chooses from.
-- **Not a replacement for verification.** Oracles stay deterministic and
-  external. A fluent agent that can't be checked is a liability with a
-  good memory.
+- **Open-world capability.** A cache miss never prevents action because Bash remains available.
+- **Procedural memory.** Discoveries about a repository, toolchain, or workflow do not have to be rediscovered every session.
+- **Small active action space.** The model sees a few contextually relevant affordances rather than a huge global catalog.
+- **Emergent specialization.** The same Tracer binary can develop different useful habits in different projects and environments.
+- **Potential efficiency gains.** Familiar operations can become recognition/reuse problems instead of repeated reasoning/exploration problems.
 
-## The standard
+## Learned, not curated
 
-Every phase must be runnable, measured against a control, and honest
-about cost. Phase 1 cost ~9% more tokens and didn't save wall time —
-that's in the report, not buried. A phase that improves success while
-hiding its price hasn't passed.
+Tracer must not solve this by embedding an unmaintainable command taxonomy or hand-authored skill hierarchy. Durable ground truth is the history of observed episodes. More abstract representations may be derived from that history:
+
+- shell/command structural normalization,
+- semantic embeddings of intent and context,
+- clusters of similar episodes,
+- lazily synthesized parameterized templates,
+- higher-order prototypes or repeated action sequences,
+- quality signals derived from success, retries, corrective actions, latency, and downstream progress.
+
+Those abstractions are caches over experience, not a replacement for it. They should be revisable as evidence improves.
+
+## What Tracer is not
+
+- **Not an eval harness.** The existing Phase-1 benchmark validated the core memory idea; it is supporting test infrastructure, not the product.
+- **Not a static tool registry.** Tracer may expose a small set of true primitives, but learned affordances are bottom-up rather than curated top-down.
+- **Not a prompt library.** Stored actions are evidence of prior behavior and outcomes.
+- **Not a closed action system.** Raw Bash remains the escape hatch for novel work.
+- **Not memory without an agent.** The memory layer is Tracer's differentiator, but the product is the complete interactive agent CLI around it.
+
+## Evaluation
+
+Evaluation remains important because the learned-memory mechanism can easily become self-reinforcing noise. Controlled tests should measure task success, steps, failed actions, tokens, wall time, transfer, and retrieval pollution. Those tests answer whether a change improves Tracer; they do not define what Tracer is.
+
+Phase 1 established a useful first signal using raw episodic retrieval. Future evaluations should continue to compare memory strategies honestly while product development moves toward the interactive CLI.
