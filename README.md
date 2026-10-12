@@ -34,6 +34,23 @@ observe + remember
 
 Over time, repeated experience can support better retrieval, structural command normalization, lazily derived templates/prototypes, quality weighting, and eventually reusable higher-order actions. These abstractions should emerge from evidence rather than from a hand-maintained command taxonomy.
 
+## Long-running sessions
+
+Tracer is intended to support ongoing interactive work, not only fresh one-shot conversations. Two capabilities are therefore part of the product baseline:
+
+- **Context compaction.** When a session approaches the model's useful context budget, Tracer should compact older conversation and tool history into durable session state while retaining recent turns verbatim. Compaction must preserve the information needed to continue the task: user requirements and constraints, decisions, discovered workspace facts, important command outcomes, files changed, unresolved work, and other active state. Raw tool output should not grow without bound.
+- **Session persistence and resume.** Sessions should survive CLI exit/restart. A user must be able to list/select a prior session and resume it in the same workspace with its compacted state, relevant recent history, task progress, and conversational continuity restored.
+
+Session compaction is separate from learned-affordance memory. They solve different problems:
+
+```text
+conversation/session context  → compacted so one working session can continue
+workspace/task state          → preserves what is true and what remains to do
+learned affordance memory     → reusable intent/action/outcome experience across work
+```
+
+Compaction must not overwrite or masquerade as the affordance store, and resuming a session must not require replaying its entire raw transcript into the model.
+
 ## Current status
 
 The repository currently contains a **Phase-1 proof-of-concept/evaluation harness**, not yet the complete intended interactive product.
@@ -54,18 +71,22 @@ The present files reflect that prototype history:
 
 The next engineering priority is to extract the reusable runtime from the experiment and build the actual interactive Tracer CLI:
 
-1. separate model/provider, agent loop, Bash execution, environment context, memory, retrieval, and safety components;
+1. separate model/provider, agent loop, Bash execution, environment context, session state, compaction, memory, retrieval, and safety components;
 2. build an ongoing conversational terminal session over arbitrary working directories;
-3. place passive retrieval between next-step intent formation and concrete action execution;
-4. persist workspace-aware episodic memory across normal sessions;
-5. make the existing controlled eval harness consume the same product runtime rather than defining it;
-6. then improve retrieval with embeddings, structural normalization, quality weighting, lazy templates/prototypes, and forgetting/decay, measuring each change against the baseline.
+3. persist sessions and support listing/selecting/resuming them after CLI restart;
+4. add context-budget-aware compaction so long sessions can continue without simply dropping old state;
+5. place passive retrieval between next-step intent formation and concrete action execution;
+6. persist workspace-aware episodic affordance memory across normal sessions;
+7. make the existing controlled eval harness consume the same product runtime rather than defining it;
+8. then improve retrieval with embeddings, structural normalization, quality weighting, lazy templates/prototypes, and forgetting/decay, measuring each change against the baseline.
 
 See [`.agents/VISION.md`](.agents/VISION.md), [`.agents/ARCHITECTURE.md`](.agents/ARCHITECTURE.md), and [`.agents/ROADMAP.md`](.agents/ROADMAP.md).
 
 ## Design principles
 
 - **Interactive agent first.** Benchmarking exists to validate the product, not to become the product.
+- **Sessions are durable.** Exiting the CLI must not make ongoing work unrecoverable.
+- **Long conversations compact, not disappear.** Context pressure should trigger state-preserving compaction rather than blind truncation.
 - **Bash stays open-world.** A missing learned affordance must never make an action impossible.
 - **Intent is semantic state.** It provides the retrieval key for what the agent is trying to accomplish next.
 - **Experience is ground truth.** Raw observed episodes remain primary; abstractions are derivative caches.
